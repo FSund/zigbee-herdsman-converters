@@ -7,10 +7,25 @@ import {repInterval} from '../lib/constants';
 import * as exposes from '../lib/exposes';
 import {electricityMeter, onOff, temperature} from '../lib/modernExtend';
 import * as reporting from '../lib/reporting';
-import {DefinitionWithExtend} from '../lib/types';
+import {DefinitionWithExtend, Fz} from '../lib/types';
 
 const e = exposes.presets;
 const ea = exposes.access;
+
+// datek specific converters
+const datek = {
+    fz: {
+        // Some Datek devices report strange values sometimes
+        electrical_measurement: {
+            ...fz.electrical_measurement,
+            convert: (model, msg, publish, options, meta) => {
+                if (msg.data.activePower !== -0xffff) {
+                    return fz.electrical_measurement.convert(model, msg, publish, options, meta);
+                }
+            },
+        } satisfies Fz.Converter,
+    },
+};
 
 const definitions: DefinitionWithExtend[] = [
     {
@@ -18,7 +33,7 @@ const definitions: DefinitionWithExtend[] = [
         model: 'HLU2909K',
         vendor: 'Datek',
         description: 'APEX smart plug 16A',
-        fromZigbee: [fz.on_off, fz.electrical_measurement, fz.temperature],
+        fromZigbee: [fz.on_off, datek.fz.electrical_measurement, fz.temperature],
         toZigbee: [tz.on_off, tz.power_on_behavior],
         ota: true,
         configure: async (device, coordinatorEndpoint) => {
